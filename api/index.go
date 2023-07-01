@@ -11,6 +11,13 @@ import (
 	"time"
 )
 
+var needReplace []string
+
+func init() {
+	getenv := os.Getenv("URL_REPLACE")
+	needReplace = strings.Split(getenv, ";")
+}
+
 // Handle Serverless Func
 func Handle(w http.ResponseWriter, r *http.Request) {
 	log.Printf("method: %s path:%s query:%v remote:%s", r.Method, r.RequestURI, r.URL.Query(), r.RemoteAddr)
@@ -52,16 +59,35 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add(s, strings.Join(vs, "; "))
 		}
 	}
-	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
+	if len(needReplace) > 0 && strings.Contains(resp.Header.Get("Content-Type"), "text") {
+		all, err := io.ReadAll(resp.Body)
+		if err != nil {
+			write503(w, err)
+			return
+		}
+		respStr := string(all)
+		for _, s := range needReplace {
+			before, after, ok := strings.Cut(s, "->")
+			if ok {
+				respStr = strings.ReplaceAll(respStr, before, after)
+			}
+		}
+		w.WriteHeader(resp.StatusCode)
+		w.Write([]byte(respStr))
+	} else {
+		w.WriteHeader(resp.StatusCode)
+		io.Copy(w, resp.Body)
+	}
 }
 
-func corsIncludes(headerKey string)bool{
+func corsIncludes(headerKey string) bool {
 	switch headerKey {
-		case "Cross-Origin-Opener-Policy":
-		    return true
-		default: 
-		    return false
+	case "Cross-Origin-Opener-Policy":
+		return true
+	case "Access-Control-Allow-Origin":
+		return true
+	default:
+		return false
 	}
 }
 
