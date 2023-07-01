@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "api/*.go": {
+      "runtime": "go1.20",
+      "memory": 128
+    }
+  }
+}
