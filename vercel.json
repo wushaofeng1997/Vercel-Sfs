@@ -5,10 +5,10 @@
       "maxDuration": 10
     }
   },
-  "routes": [
+  "rewrites": [
     {
-      "src": "/.*",
-      "dest": "/api/index/:path*"
+      "source": "/:path*",
+      "destination": "/api/index/:path*"
     }
   ]
 }
