@@ -10,5 +10,11 @@
       "src": "/:path*",
       "dest": "/api/index.go"
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/:path*",
+      "destination": "/api/index/:path*"
+    }
   ]
 }
