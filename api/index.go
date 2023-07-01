@@ -48,10 +48,21 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for s, vs := range resp.Header {
-		w.Header().Add(s, strings.Join(vs, "; "))
+		if corsIncludes(s) {
+			w.Header().Add(s, strings.Join(vs, "; "))
+		}
 	}
 	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, resp.Body)
+}
+
+func corsIncludes(headerKey string)bool{
+	switch headerKey {
+		case "Cross-Origin-Opener-Policy":
+		    return true
+		default: 
+		    return false
+	}
 }
 
 func write503(w http.ResponseWriter, err error) {
