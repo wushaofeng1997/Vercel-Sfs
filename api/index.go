@@ -48,7 +48,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for s, vs := range resp.Header {
-		if corsIncludes(s) {
+		if !corsIncludes(s) {
 			w.Header().Add(s, strings.Join(vs, "; "))
 		}
 	}
