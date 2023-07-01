@@ -25,7 +25,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println(parse.Scheme)
 	//log.Println(parse.Opaque)
-	request, err := http.NewRequest(r.Method, parse.Scheme+"://"+path.Join(parse.Host, r.RequestURI), r.Body)
+	request, err := http.NewRequest(r.Method, parse.Scheme+"://"+path.Join(parse.Host, strings.TrimLeft(r.RequestURI,"/api/index")), r.Body)
 	if err != nil {
 		write503(w, err)
 		return
