@@ -48,9 +48,9 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	}
 	request.Header = r.Header.Clone()
 	request.Form = r.Form
-	log.println(r.Form)
+	log.Println(r.Form)
 	request.PostForm = r.PostForm
-	log.println(r.PostForm)
+	log.Println(r.PostForm)
 	request.MultipartForm = r.MultipartForm
 	client := &http.Client{}
 	resp, err := client.Do(request)
