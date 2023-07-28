@@ -113,6 +113,9 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add(s, strings.Join(vs, "; "))
 		}
 	}
+	w.Header().Set("Access-Control-Allow-Origin", "https://selfwu.one")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, resp.Body)
 }
