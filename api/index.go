@@ -41,7 +41,12 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	//log.Println(parse.Opaque)
 	var proxyUrl = parse.Scheme+"://"+path.Clean(strings.TrimPrefix(path.Join(parse.Host, r.URL.Path+"?"+r.URL.RawQuery),"/"))
 	log.Printf("proxyUrl: %s",proxyUrl)
-	request, err := http.NewRequest(r.Method, proxyUrl, r.Body)
+	all, err := io.ReadAll(r.Body)
+	if err != nil {
+		write503(w, err)
+		return
+	}
+	request, err := http.NewRequest(r.Method, proxyUrl, bytes.NewReader(all))
 	if err != nil {
 		write503(w, err)
 		return
