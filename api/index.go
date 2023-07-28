@@ -39,24 +39,65 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println(r.URL.RawQuery)
 	//log.Println(parse.Opaque)
-	var proxyUrl = parse.Scheme+"://"+path.Clean(strings.TrimPrefix(path.Join(parse.Host, r.URL.Path+"?"+r.URL.RawQuery),"/"))
-	log.Printf("proxyUrl: %s",proxyUrl)
+	var proxyUrl = parse.Scheme + "://" + path.Clean(strings.TrimPrefix(path.Join(parse.Host, r.URL.Path+"?"+r.URL.RawQuery), "/"))
+	log.Printf("proxyUrl: %s", proxyUrl)
 	all, err := io.ReadAll(r.Body)
 	if err != nil {
 		write503(w, err)
 		return
 	}
 	log.Println(string(all))
-	request, err := http.NewRequest(r.Method, proxyUrl, bytes.NewReader(all))
+	log.Println(r.PostForm)
+	var request *http.Request
+	contentType := r.Header.Get("Content-Type")
+	if contentType == "application/x-www-form-urlencoded" {
+		request, err = http.NewRequest(r.Method, proxyUrl, strings.NewReader(r.PostForm.Encode()))
+	} else if strings.Contains(contentType, "multipart") {
+		var buf bytes.Buffer
+		writer := multipart.NewWriter(&buf)
+		value := r.MultipartForm.Value
+		for k, v := range value {
+			for _, s := range v {
+				err := writer.WriteField(k, s)
+				if err != nil {
+					write503(w, err)
+					return
+				}
+			}
+		}
+		for s, headers := range r.MultipartForm.File {
+			for _, header := range headers {
+				file, err := writer.CreateFormFile(s, header.Filename)
+				if err != nil {
+					write503(w, err)
+					return
+				}
+				open, err := header.Open()
+				if err != nil {
+					write503(w, err)
+					return
+				}
+				_, err = io.Copy(file, open)
+				if err != nil {
+					write503(w, err)
+					return
+				}
+			}
+		}
+		writer.Close()
+		contentType = writer.FormDataContentType()
+		request, err = http.NewRequest(r.Method, proxyUrl, &buf)
+	} else {
+		request, err = http.NewRequest(r.Method, proxyUrl, bytes.NewReader(all))
+	}
 	if err != nil {
 		write503(w, err)
 		return
 	}
 	request.Header = r.Header.Clone()
+	request.Header.Set("Content-Type", contentType)
 	request.Form = r.Form
 	log.Println(r.Form)
-	request.PostForm = r.PostForm
-	log.Println(r.PostForm)
 	request.MultipartForm = r.MultipartForm
 	client := &http.Client{}
 	resp, err := client.Do(request)
@@ -69,25 +110,8 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add(s, strings.Join(vs, "; "))
 		}
 	}
-	if len(needReplace) > 0 && strings.Contains(resp.Header.Get("Content-Type"), "text") {
-		all, err := io.ReadAll(resp.Body)
-		if err != nil {
-			write503(w, err)
-			return
-		}
-		respStr := string(all)
-		for _, s := range needReplace {
-			before, after, ok := strings.Cut(s, "->")
-			if ok {
-				respStr = strings.ReplaceAll(respStr, before, after)
-			}
-		}
-		w.WriteHeader(resp.StatusCode)
-		w.Write([]byte(respStr))
-	} else {
-		w.WriteHeader(resp.StatusCode)
-		io.Copy(w, resp.Body)
-	}
+	w.WriteHeader(resp.StatusCode)
+	io.Copy(w, resp.Body)
 }
 
 func corsIncludes(headerKey string) bool {
