@@ -114,7 +114,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.WriteHeader(resp.StatusCode)
-	_,err= io.Copy(w, resp.Body)
+	_, err = io.Copy(w, resp.Body)
 	if err != nil {
 		log.Println(err)
 	}
