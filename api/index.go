@@ -114,7 +114,10 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
+	_,err= io.Copy(w, resp.Body)
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func corsIncludes(headerKey string) bool {
