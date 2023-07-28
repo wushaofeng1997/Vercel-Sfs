@@ -16,6 +16,7 @@ import (
 
 var needReplace []string
 
+
 func init() {
 	getenv := os.Getenv("URL_REPLACE")
 	needReplace = strings.Split(getenv, ";")
@@ -97,6 +98,12 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		write503(w, err)
 		return
 	}
+	if r.Method == http.MethodOptions {
+	   w.Header().Set("Access-Control-Allow-Origin", "*")
+	   w.Header().Set("Access-Control-Allow-Headers", "*")
+	   w.WriteHeader(http.StatusOK)
+	   return
+	}
 	request.Header = r.Header.Clone()
 	request.Header.Set("Content-Type", contentType)
 	request.Form = r.Form
@@ -113,7 +120,6 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add(s, strings.Join(vs, "; "))
 		}
 	}
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, resp.Body)
 }
