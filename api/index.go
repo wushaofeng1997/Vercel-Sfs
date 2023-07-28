@@ -13,13 +13,25 @@ import (
 	"time"
 )
 
-
 var needReplace []string
 
 
 func init() {
 	getenv := os.Getenv("URL_REPLACE")
 	needReplace = strings.Split(getenv, ";")
+}
+
+const (
+	DEBUG = iota
+)
+
+func GetProxyUrl(env int, url string) string {
+	switch env {
+	case DEBUG:
+		return url
+	default:
+		return os.Getenv("PROXY_URL")
+	}
 }
 
 // Handle Serverless Func
@@ -31,11 +43,26 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		log.Printf("method: %s path:%s remote:%s spent:%v", r.Method, r.RequestURI, r.RemoteAddr, time.Since(start))
 	}()
+	if r.Method == http.MethodOptions {
+		ao := os.Getenv("Allow-Origin")
+		ah := os.Getenv("Allow-Headers")
+		if ao != "" {
+			w.Header().Set("Access-Control-Allow-Origin", ao)
+		}
+		if ah != "" {
+			w.Header().Set("Access-Control-Allow-Headers", ah)
+		}
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	err := r.ParseMultipartForm(1024 * 1024 * 64)
 	if err != nil {
 		//log.Println(err)
 	}
-	urlStr := os.Getenv("PROXY_URL")
+	var mode = 99
+	//DEBUG
+	//mode = DEBUG
+	urlStr := GetProxyUrl(mode, "http://localhost:34555/")
 	parse, err := url.Parse(urlStr)
 	if err != nil {
 		write503(w, err)
@@ -43,7 +70,11 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println(r.URL.RawQuery)
 	//log.Println(parse.Opaque)
-	var proxyUrl = parse.Scheme + "://" + path.Clean(strings.TrimPrefix(path.Join(parse.Host, r.URL.Path+"?"+r.URL.RawQuery), "/"))
+	var rawQuery string
+	if r.URL.RawQuery != "" {
+		rawQuery = "?" + r.URL.RawQuery
+	}
+	var proxyUrl = parse.Scheme + "://" + path.Clean(strings.TrimPrefix(path.Join(parse.Host, r.URL.Path+rawQuery), "/"))
 	log.Printf("proxyUrl: %s", proxyUrl)
 	all, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -120,8 +151,12 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add(s, strings.Join(vs, "; "))
 		}
 	}
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
+	_, err = io.Copy(w, resp.Body)
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func corsIncludes(headerKey string) bool {
