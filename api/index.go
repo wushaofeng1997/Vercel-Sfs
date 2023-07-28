@@ -46,6 +46,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		write503(w, err)
 		return
 	}
+	log.Println(string(all))
 	request, err := http.NewRequest(r.Method, proxyUrl, bytes.NewReader(all))
 	if err != nil {
 		write503(w, err)
